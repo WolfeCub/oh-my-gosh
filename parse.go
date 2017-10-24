@@ -3,8 +3,7 @@ package main
 import (
 	"unicode"
 	"fmt"
-	"strings"
-	"github.com/peterh/liner"
+    "strings"
 )
 
 type ConType int
@@ -296,23 +295,4 @@ func get_token(line string, index *int) (Token, string){
 	}
 	
 	return Identifier, line[start:*index]
-}
-
-func main() {
-	rl := liner.NewLiner()
-	defer rl.Close()
-	rl.SetCtrlCAborts(true)
-
-	var parsed_line *ParsedLine
-	for true {
-		line, err := rl.Prompt("$ ")
-		if (err != nil) {
-			panic(err)
-		}
-		if (len(strings.TrimSpace(line)) == 0) { continue }
-
-		parsed_line = construct_parsed_line(line)
-
-		fmt.Println(parsed_line.ToStringRecursive())
-	}
 }
