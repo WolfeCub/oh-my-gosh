@@ -3,9 +3,8 @@ package main
 import (
 	"unicode"
 	"fmt"
-	"bufio"
 	"strings"
-	"os"
+	"github.com/peterh/liner"
 )
 
 type ConType int
@@ -14,6 +13,17 @@ const (
     And
     Or
 )
+
+func pcon(tok ConType) string {
+	switch (tok) {
+	case And:
+		return("And")
+	case Or:
+		return("Or")
+	default:
+		return("Sequence")
+	}
+}
 
 type Token int
 const (
@@ -34,10 +44,56 @@ const (
     EOL
 )
 
+func ptok(tok Token) string {
+	switch (tok) {
+	case FileIn:
+		return("FileIn")
+	case FileOut:
+		return("FileOut")
+	case Semicolon:
+		return("Semicolon")
+	case Pipe:
+		return("Pipe")
+	case Ampersand:
+		return("Ampersand")
+	case TwoAmpersands:
+		return("TwoAmpersands")
+	case TwoPipes:
+		return("TwoPipes")
+	case FileOutDouble:
+		return("FileOutDouble")
+	case DoublePipe:
+		return("DoublePipe")
+	case EOL:
+		return("EOL")
+	default:
+		return("ID")
+	}
+}
+
 type PipeLine struct {
 	argv []string
 	is_double_redirect bool
     next *PipeLine
+}
+
+func (pl *PipeLine) ToString(indent bool) string {
+	tab := "    "
+	total := ""
+	total += tab + "argv: " + fmt.Sprint(pl.argv) + "\n"
+	total += tab + "is_double_redirect: " + fmt.Sprint(pl.is_double_redirect) + "\n"
+	total += tab + "next: " + fmt.Sprintf("%p", pl.next)
+	return total
+}
+
+func (pl *PipeLine) ToStringRecursive(indent bool) string {
+	total := pl.ToString(indent)
+
+	if pl.next != nil {
+		return total + "\n\n"  + pl.next.ToStringRecursive(indent)
+	} else {
+		return total
+	}
 }
 
 type ParsedLine struct {
@@ -48,6 +104,36 @@ type ParsedLine struct {
 	background bool
 	pipeline *PipeLine
 	next * ParsedLine
+}
+
+func (pl *ParsedLine) ToString() string {
+	total := ""
+	total += "con_type: " + pcon(pl.con_type) + "\n"
+	if pl.input != nil {
+		total += "input: " + *(pl.input) + "\n"
+	} else {
+		total += "input: nil" + "\n"
+	}
+	if pl.output != nil {
+		total += "output: " + *(pl.output) + "\n"
+	} else {
+		total += "output: nil" + "\n"
+	}
+	total += "is_doubled: " + fmt.Sprint(pl.is_doubled) + "\n"
+	total += "background: " + fmt.Sprint(pl.background) + "\n"
+	total += "pipeline: \n" + pl.pipeline.ToStringRecursive(true) + "\n"
+	total += "next: " + fmt.Sprintf("%p", pl.next)
+	return total
+}
+
+func (pl *ParsedLine) ToStringRecursive() string {
+	total := pl.ToString()
+
+	if pl.next != nil {
+		return total + "\n\n" + pl.next.ToStringRecursive() 
+	} else {
+		return total
+	}
 }
 
 func construct_parsed_line (line string) *ParsedLine {
@@ -212,45 +298,21 @@ func get_token(line string, index *int) (Token, string){
 	return Identifier, line[start:*index]
 }
 
-func ptok(tok Token) string {
-	switch (tok) {
-	case FileIn:
-		return("FileIn");
-	case FileOut:
-		return("FileOut");
-	case Semicolon:
-		return("Semicolon");
-	case Pipe:
-		return("Pipe");
-	case Ampersand:
-		return("Ampersand");
-	case TwoAmpersands:
-		return("TwoAmpersands");
-	case TwoPipes:
-		return("TwoPipes");
-	case FileOutDouble:
-		return("FileOutDouble");
-	case DoublePipe:
-		return("DoublePipe");
-	case EOL:
-		return("EOL");
-	default:
-		return("ID");
-	}
-}
-
 func main() {
-	reader := bufio.NewReader(os.Stdin)
+	rl := liner.NewLiner()
+	defer rl.Close()
+	rl.SetCtrlCAborts(true)
+
 	var parsed_line *ParsedLine
 	for true {
-		fmt.Print("$ ")
-		text, _ := reader.ReadString('\n')
-		if (len(strings.TrimSpace(text)) == 0) {continue}
-		parsed_line = construct_parsed_line(text)
-		p := parsed_line.pipeline
-		for (p != nil) {
-			fmt.Println(p.argv)
-			p = p.next
+		line, err := rl.Prompt("$ ")
+		if (err != nil) {
+			panic(err)
 		}
+		if (len(strings.TrimSpace(line)) == 0) { continue }
+
+		parsed_line = construct_parsed_line(line)
+
+		fmt.Println(parsed_line.ToStringRecursive())
 	}
 }
