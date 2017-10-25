@@ -8,61 +8,63 @@ import (
 
 type ConType int
 const (
-    Sequence ConType = iota
-    And
-    Or
+    SEQUENCE ConType = iota
+    AND
+    OR
 )
 
 func pcon(tok ConType) string {
 	switch (tok) {
-	case And:
-		return("And")
-	case Or:
-		return("Or")
+	case AND:
+		return("AND")
+	case OR:
+		return("OR")
 	default:
-		return("Sequence")
+		return("SEQUENCE")
 	}
 }
 
 type Token int
 const (
-    Identifier Token = iota
-    FileIn
-    FileOut
-    FileOutAppend
-    FileOutDouble
+    IDENTIFIER Token = iota
+    FILEIN
+    FILEOUT
+    FILEOUTAPPEND
+    FILEOUTDOUBLE
     /* From here on it should be a new
      * ParsedLine rather than a new PipeLine
      */
-    Semicolon
-    Ampersand
-    Pipe
-    TwoAmpersands
-    TwoPipes
-    DoublePipe
+    SEMICOLON
+    AMPERSAND
+    PIPE
+    TWOAMPERSANDS
+    TWOPIPES
+    DOUBLEPIPE
     EOL
 )
 
 func ptok(tok Token) string {
 	switch (tok) {
-	case FileIn:
-		return("FileIn")
-	case FileOut:
-		return("FileOut")
-	case Semicolon:
-		return("Semicolon")
-	case Pipe:
-		return("Pipe")
-	case Ampersand:
-		return("Ampersand")
-	case TwoAmpersands:
-		return("TwoAmpersands")
-	case TwoPipes:
-		return("TwoPipes")
-	case FileOutDouble:
-		return("FileOutDouble")
-	case DoublePipe:
-		return("DoublePipe")
+	case FILEIN:
+		return("FILEIN")
+	case FILEOUT:
+		return("FILEOUT")
+	case FILEOUTAPPEND:
+		return("FILEOUTAPPEND")
+	case FILEOUTDOUBLE:
+		return("FILEOUTDOUBLE")
+	case SEMICOLON:
+		return("SEMICOLON")
+	case PIPE:
+		return("PIPE")
+	case AMPERSAND:
+		return("AMPERSAND")
+	case TWOAMPERSANDS:
+		return("TWOAMPERSANDS")
+	case TWOPIPES:
+		return("TWOPIPES")
+	case DOUBLEPIPE:
+		return("DOUBLEPIPE")
 	case EOL:
 		return("EOL")
 	default:
@@ -146,7 +148,7 @@ func construct_parsed_line (line string) *ParsedLine {
 
 	retval = new(ParsedLine)
 	curline = retval
-	curline.con_type = Sequence
+	curline.con_type = SEQUENCE
 	curline.input = nil
 	curline.output = nil
 	curline.is_doubled = false
@@ -159,32 +161,32 @@ func construct_parsed_line (line string) *ParsedLine {
 	
 	tok, val = get_token(line, index)
 	for (tok != EOL) {
-		for (tok < Semicolon) {
+		for (tok < SEMICOLON) {
 			switch tok {
-			case Identifier:
+			case IDENTIFIER:
 				argv = append(argv, val)
-			case FileIn:
+			case FILEIN:
 				if (curline.input != nil) {
 					println("Error: multiple input redirects")
 					return nil
 				}
 				tok, val = get_token(line, index)
-				if (tok != Identifier) {
+				if (tok != IDENTIFIER) {
 					println("Error: error in input redirect")
 					return nil
 				}
 				curline.input = new(string)
 				*curline.input = val
-			case FileOutDouble:
+			case FILEOUTDOUBLE:
 				curline.is_doubled = true
 				fallthrough
-			case FileOut:
+			case FILEOUT:
 				if (curline.output != nil) {
 					println("Error: multiple input redirects")
 					return nil
 				}
 				tok, val = get_token(line, index)
-				if (tok != Identifier) {
+				if (tok != IDENTIFIER) {
 					println("Error: error in output redirect")
 					return nil
 				}
@@ -208,24 +210,24 @@ func construct_parsed_line (line string) *ParsedLine {
 			return nil
 		}
 
-		if (tok == Ampersand) {
+		if (tok == AMPERSAND) {
 			curline.background = true
 		}
 
-		if (tok == DoublePipe) {
+		if (tok == DOUBLEPIPE) {
 			is_double = true
 		}
 
-		if (tok == Semicolon || tok == Ampersand || tok == TwoAmpersands || tok == DoublePipe) {
+		if (tok == SEMICOLON || tok == AMPERSAND || tok == TWOAMPERSANDS || tok == DOUBLEPIPE) {
 			curline.next = new(ParsedLine)
 			curline = curline.next
 
-			if (tok == Semicolon || tok  == Ampersand) {
-				curline.con_type = Sequence
-			} else if (tok == TwoAmpersands) {
-				curline.con_type = And
+			if (tok == SEMICOLON || tok  == AMPERSAND) {
+				curline.con_type = SEQUENCE
+			} else if (tok == TWOAMPERSANDS) {
+				curline.con_type = AND
 			} else {
-				curline.con_type = Or
+				curline.con_type = OR
 			}
 
 			curline.input = nil
@@ -257,35 +259,35 @@ func get_token(line string, index *int) (Token, string){
 	switch line[*index] {
 	case '<':
 		*index++
-		return FileIn, content
+		return FILEIN, content
 	case '>':
 		*index++
 		if (line[*index] == '&') {
 			*index++
-			return FileOutDouble, content
+			return FILEOUTDOUBLE, content
 		}
-		return FileOut, content
+		return FILEOUT, content
 	case ';':
 		*index++
-		return Semicolon, content
+		return SEMICOLON, content
 	case '|':
 		if (line[*index + 1] == '|') {
 			*index += 2
-			return TwoPipes, content
+			return TWOPIPES, content
 		}
 		*index++
 		if (line[*index] == '&') {
 			*index++
-			return DoublePipe, content
+			return DOUBLEPIPE, content
 		}
-		return Pipe, content
+		return PIPE, content
 	case '&':
 		if (line[*index + 1] == '&') {
 			*index += 2
-			return TwoAmpersands, content
+			return TWOAMPERSANDS, content
 		} else {
 			*index++
-			return Ampersand, content
+			return AMPERSAND, content
 		}
 	}
 	/* If we've reached here we know it's an identifier */
@@ -294,5 +296,5 @@ func get_token(line string, index *int) (Token, string){
 		*index++
 	}
 	
-	return Identifier, line[start:*index]
+	return IDENTIFIER, line[start:*index]
 }
