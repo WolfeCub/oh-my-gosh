@@ -282,7 +282,9 @@ func handle_quotes(line *string, index *int) (Token, string) {
 	i++ /* We've already handled the closing quote */
 
 	/* Modify what line and index are pointing at to continue parsing
-     * from our new string rather than  */
+     * normally from the end of the string. This way construct_parsed_line
+     * can continue on normally.
+     */
 	*index = i;
 	*line = val;
 	return IDENTIFIER, additional_input
