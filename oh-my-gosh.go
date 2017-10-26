@@ -31,11 +31,13 @@ func is_null_or_whitespace(str string) bool {
 	return strings.TrimSpace(str) == ""
 }
 
+/* Global access since other functions may want to prompt */
+/* TODO: Name this better ... it's a global ... c'mon */
+var rl = liner.NewLiner()
 func main() {
 	/* TODO: This should be ~/.something */
 	const history_path = "history"
 
-	rl := liner.NewLiner()
 	defer rl.Close()
 	rl.SetCtrlCAborts(true)
 

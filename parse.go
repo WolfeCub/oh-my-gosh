@@ -78,6 +78,7 @@ type PipeLine struct {
     next *PipeLine
 }
 
+/* TODO: Less concating and more formatting */
 func (pl *PipeLine) ToString(indent bool) string {
 	tab := "    "
 	total := ""
@@ -107,6 +108,7 @@ type ParsedLine struct {
 	next * ParsedLine
 }
 
+/* TODO: Less concating and more formatting */
 func (pl *ParsedLine) ToString() string {
 	total := ""
 	total += "con_type: " + pcon(pl.con_type) + "\n"
@@ -159,7 +161,7 @@ func construct_parsed_line (line string) *ParsedLine {
 	var index *int = new(int)
 	*index = 0
 	
-	tok, val = get_token(line, index)
+	tok, val = get_token(&line, index)
 	for (tok != EOL) {
 		for (tok < SEMICOLON) {
 			switch tok {
@@ -170,7 +172,7 @@ func construct_parsed_line (line string) *ParsedLine {
 					println("Error: multiple input redirects")
 					return nil
 				}
-				tok, val = get_token(line, index)
+				tok, val = get_token(&line, index)
 				if (tok != IDENTIFIER) {
 					println("Error: error in input redirect")
 					return nil
@@ -185,7 +187,7 @@ func construct_parsed_line (line string) *ParsedLine {
 					println("Error: multiple input redirects")
 					return nil
 				}
-				tok, val = get_token(line, index)
+				tok, val = get_token(&line, index)
 				if (tok != IDENTIFIER) {
 					println("Error: error in output redirect")
 					return nil
@@ -193,7 +195,7 @@ func construct_parsed_line (line string) *ParsedLine {
 				curline.output = new(string)
 				*curline.output = val
 			}
-			tok, val = get_token(line, index)
+			tok, val = get_token(&line, index)
 		}
 
 
@@ -239,30 +241,73 @@ func construct_parsed_line (line string) *ParsedLine {
 			plp = &(curline.pipeline)
 		}
 
-		tok, val = get_token(line, index)
+		tok, val = get_token(&line, index)
 	}
 
 	return retval
 }
 
-func get_token(line string, index *int) (Token, string){
+func handle_quotes(line *string, index *int) (Token, string) {
+	var quote_type byte = (*line)[*index]
+	*index++
+
+	start := *index
+	for (*index < len(*line)) {
+		if ((*line)[*index] == quote_type) {
+			*index++
+			return IDENTIFIER, (*line)[start:*index-1]
+		}
+		*index++
+	}
+	/* If we reach here then we haven't encountered a closing quote
+     * so we should prompt the user for input until they give us one
+     */
+	additional_input := (*line)[start:len(*line)]
+	var val string
+	var i int
+
+	outer:
+	for true {
+		val, _ = rl.Prompt("> ")
+		if (val[0] == quote_type) { return IDENTIFIER, "\n" }
+		for i = 1; i < len(val); i++ {
+			if (val[i] == quote_type && val[i-1] != '\\') {
+				additional_input = additional_input + "\n" + val[:i]
+				break outer
+			}
+		}
+		/* TODO: There may be a more efficient way of aggregating these strings */
+		additional_input = fmt.Sprintf("%s\n%s", additional_input, val)
+	}
+	i++ /* We've already handled the closing quote */
+
+	/* Modify what line and index are pointing at to continue parsing
+     * from our new string rather than  */
+	*index = i;
+	*line = val;
+	return IDENTIFIER, additional_input
+}
+
+func get_token(line *string, index *int) (Token, string) {
 	var content string
 
-	for (*index < len(line) && unicode.IsSpace(rune(line[*index]))) {
+	for (*index < len(*line) && unicode.IsSpace(rune((*line)[*index]))) {
 		*index++;
 	}
 
-	if (*index >= len(line)) {
+	if (*index >= len(*line)) {
 		return EOL, content
 	}
 
-	switch line[*index] {
+	switch (*line)[*index] {
+	case '\'', '"':
+		return handle_quotes(line, index)
 	case '<':
 		*index++
 		return FILEIN, content
 	case '>':
 		*index++
-		if (line[*index] == '&') {
+		if ((*line)[*index] == '&') {
 			*index++
 			return FILEOUTDOUBLE, content
 		}
@@ -271,18 +316,18 @@ func get_token(line string, index *int) (Token, string){
 		*index++
 		return SEMICOLON, content
 	case '|':
-		if (line[*index + 1] == '|') {
+		if ((*line)[*index + 1] == '|') {
 			*index += 2
 			return TWOPIPES, content
 		}
 		*index++
-		if (line[*index] == '&') {
+		if ((*line)[*index] == '&') {
 			*index++
 			return DOUBLEPIPE, content
 		}
 		return PIPE, content
 	case '&':
-		if (line[*index + 1] == '&') {
+		if ((*line)[*index + 1] == '&') {
 			*index += 2
 			return TWOAMPERSANDS, content
 		} else {
@@ -292,9 +337,9 @@ func get_token(line string, index *int) (Token, string){
 	}
 	/* If we've reached here we know it's an identifier */
 	start := *index
-	for (*index < len(line) && !unicode.IsSpace(rune(line[*index])) && strings.IndexByte("<>;&|", line[*index]) == -1) {
+	for (*index < len(*line) && !unicode.IsSpace(rune((*line)[*index])) && strings.IndexByte("<>;&|", (*line)[*index]) == -1) {
 		*index++
 	}
 	
-	return IDENTIFIER, line[start:*index]
+	return IDENTIFIER, (*line)[start:*index]
 }
