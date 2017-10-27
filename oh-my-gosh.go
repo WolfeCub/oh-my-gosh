@@ -37,12 +37,14 @@ func shell_completer(line string) (c []string) {
 	split := strings.Split(line, " ")
 	word_at_point := split[len(split)-1]
 
-	files, err := ioutil.ReadDir(filepath.Dir(word_at_point))
+	dir, base := filepath.Split(word_at_point)
+
+	files, err := ioutil.ReadDir(dir)
 	if (err == nil) {
 		for _, file := range files {
-			if strings.HasPrefix(file.Name(), word_at_point) {
-				new_line := fmt.Sprintf("%s %s", strings.Join(split[:len(split)-1], " "), file.Name())
-				c = append(c, new_line)
+			if strings.HasPrefix(file.Name(), base) {
+				/* TODO: Figure out if there's a more efficient way to do this */
+				c = append(c, dir + file.Name())
 			}
 		}
 	}
