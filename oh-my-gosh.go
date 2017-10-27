@@ -4,7 +4,9 @@ import (
 	"strings"
 	"fmt"
 	"os"
+	"path/filepath"
 	"io"
+	"io/ioutil"
 
 	"github.com/peterh/liner"
 )
@@ -31,6 +33,22 @@ func is_null_or_whitespace(str string) bool {
 	return strings.TrimSpace(str) == ""
 }
 
+func shell_completer(line string) (c []string) {
+	split := strings.Split(line, " ")
+	word_at_point := split[len(split)-1]
+
+	files, err := ioutil.ReadDir(filepath.Dir(word_at_point))
+	if (err == nil) {
+		for _, file := range files {
+			if strings.HasPrefix(file.Name(), word_at_point) {
+				new_line := fmt.Sprintf("%s %s", strings.Join(split[:len(split)-1], " "), file.Name())
+				c = append(c, new_line)
+			}
+		}
+	}
+	return
+}
+
 /* Global access since other functions may want to prompt */
 /* TODO: Name this better ... it's a global ... c'mon */
 var rl = liner.NewLiner()
@@ -40,6 +58,8 @@ func main() {
 
 	defer rl.Close()
 	rl.SetCtrlCAborts(true)
+	rl.SetCompleter(shell_completer)
+	rl.SetTabCompletionStyle(liner.TabPrints)
 
 	open_history(rl, history_path, HST_READ)
 
